@@ -1,6 +1,6 @@
 # Example sketches
 
-These sketches document the steps used during the SC-EN27 infrared investigation. They are research and verification tools, not a finished physical-button remote-control firmware.
+These sketches document the steps used during the SA-EN27 infrared investigation. They are research and verification tools, not a finished physical-button remote-control firmware.
 
 ## Recommended order
 
