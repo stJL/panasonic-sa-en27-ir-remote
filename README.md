@@ -1,141 +1,177 @@
-# Panasonic SC-EN27 / SA-EN27 紅外線遙控器資料庫
+# Panasonic SC-EN27 / SA-EN27 IR Remote Codes
 
-這份文件整理以 ESP8266 自製紅外線發射器，重建 Panasonic SC-EN27／SA-EN27 音響遙控器時，實際找到的紅外線指令。
+An experimental, community-oriented collection of infrared (IR) commands identified while recreating the remote control for the Panasonic SC-EN27 / SA-EN27 mini stereo.
 
-原廠遙控器型號：`N2QAGB000038`
+Original remote model referenced during the project: `N2QAGB000038`.
 
-> 本專案的目標是保存已測得的紅外線資料，並讓 ESP8266 能取代原廠遙控器的常用功能。表格中的功能名稱依實際測試時觀察到的音響反應整理。
+> **Disclaimer:** This is an independent reverse-engineering project, not an official Panasonic document. The notes and button labels are based on hands-on testing and may contain mistakes or incomplete interpretations. If you spot an error, have a correction, or discover another code, contributions are very welcome. Please open an issue or pull request and include the stereo model, input mode, command details, and the behavior you observed.
 
-## 目前成果
+繁體中文版本：[README.zh-TW.md](README.zh-TW.md)
 
-- 已找到 **5 組有效的 Device / Subdevice 組合**。
-- 已整理 **29 個按鍵／功能指令**。
-- 使用 Panasonic 48-bit 紅外線協定。
-- 已找到 MUSIC PORT、CD、TUNER/BAND、SOUND EQ、音量、數字鍵、POWER、DISPLAY、SLEEP、CLOCK/TIMER 等功能。
-- CD STOP 與 PLAY MODE 尚未復現；測試時沒有可用 CD 進行完整驗證。
+## Project status
 
-## 硬體與軟體環境
+- 29 command mappings are currently documented across five Device 160 subdevices.
+- The protocol observed for these commands is Panasonic 48-bit.
+- Identified functions include MUSIC PORT, tuner, CD controls, volume, sound effects, numeric keys, display, sleep, and timer controls.
+- CD STOP and PLAY MODE have not yet been reproduced. A usable CD was not available for the relevant playback tests.
 
-| 項目 | 設定 |
+The command names describe the behavior observed during this project. Some functions may behave differently depending on the stereo's current input or operating state.
+
+## Hardware and software
+
+| Item | Configuration |
 |---|---|
-| 開發板 | Difi WF8266RDF ESP8266 IoT Learning Board |
-| Arduino IDE | Arduino IDE 2 |
-| 紅外線函式庫 | `IRremoteESP8266` |
-| 紅外線發射 | `IR_E` = GPIO0（D3） |
-| 紅外線接收 | `IR_R` = GPIO4（D2） |
+| Board | Difi WF8266RDF ESP8266 IoT Learning Board |
+| Development environment | Arduino IDE 2 |
+| IR library | `IRremoteESP8266` |
+| IR transmitter | `IR_E` = GPIO0 (D3) |
+| IR receiver | `IR_R` = GPIO4 (D2) |
 | Serial Monitor | 115200 baud |
-| 協定 | Panasonic，48 bits |
-| Device | 160（所有已找到的指令） |
+| IR protocol | Panasonic, 48 bits |
+| Device value | 160 |
 
-### 腳位提醒
+### Board pin note
 
-Difi WF8266RDF 的紅外線腳位：
+On the Difi WF8266RDF board used in this project:
 
-- `IR_E`（IR Sender）：GPIO0 / D3
-- `IR_R`（IR Receiver）：GPIO4 / D2
-- `IRSW` 是紅外線障礙物感測相關腳位，不是發射腳位。
+- `IR_E` is the IR sender on GPIO0 / D3.
+- `IR_R` is the IR receiver on GPIO4 / D2.
+- `IRSW` is associated with the IR obstacle-sensing function; it is not the IR transmitter pin.
 
-## 指令資料
+## Source code and implementation
 
-所有指令的 Device 均為 `160`。`IR Data` 是交給 `IRremoteESP8266` 的 `sendPanasonic64()` 使用的 48-bit 值。
+The [`examples/`](examples/) directory contains the sketches used to validate the hardware and investigate the command set:
 
-`Repeat` 是測試紀錄中的 `sendPanasonic64(code, 48, repeats)` 第三個參數：
+| Sketch | Purpose |
+|---|---|
+| [`01_ir_nec_loopback_test.ino`](examples/01_ir_nec_loopback_test.ino) | Checks the IR sender/receiver path with a simple NEC test frame. |
+| [`02_panasonic_48bit_loopback_test.ino`](examples/02_panasonic_48bit_loopback_test.ino) | Checks Panasonic 48-bit encoding and local reception. |
+| [`03_panasonic_obc_scanner.ino`](examples/03_panasonic_obc_scanner.ino) | Main research tool: scans OBC values, supports manual sends and scan control, and decodes captured Panasonic frames. |
+| [`examples/README.md`](examples/README.md) | Build notes, recommended test order, and interpretation notes. |
 
-- `0`：初始訊號發送一次，不額外重複。
-- `1`：初始訊號之外，再額外重複一次。
+### How the investigation works
 
-表格先忠實保留測試時記錄的 Repeat 值。若要製作正式遙控器，尤其 POWER 這種切換式按鍵，建議逐鍵確認使用 `0` 或 `1` 的實際效果，不要直接把所有按鍵統一成相同 Repeat。
+1. Verify the physical IR sender and receiver with a known NEC test signal.
+2. Verify Panasonic 48-bit transmission and decoding using a generated test frame.
+3. Use the scanner to select a Device and Subdevice, then examine OBC values while observing the stereo itself.
+4. Record the stereo's actual response and the corresponding Device, Subdevice, OBC, and 48-bit data in the command table.
+
+The scanner converts the JP1-style byte fields to the bit order expected by `IRremoteESP8266`'s `sendPanasonic64()` method, including the checksum byte. The code and command table are provided so other researchers can reproduce the method, challenge the interpretations, and contribute additional findings.
+
+**Scope:** The repository currently includes the test and reverse-engineering sketches. It does not yet include a finished standalone remote with a physical keypad, display, or custom user interface.
+
+## IR command data
+
+All entries below use Device `160`. The `IR Data` column contains the 48-bit value used with `IRremoteESP8266`'s `sendPanasonic64()` method.
 
 ### Subdevice 0 — AMP/0308
 
-| 按鍵／功能 | OBC | IR Data | Repeat |
-|---|---:|---|---:|
-| MUSIC PORT | 154 | `0x40040500595C` | 1 |
-| Volume + | 32 | `0x400405000401` | 1 |
-| Volume - | 33 | `0x400405008481` | 1 |
-| Live Virtualizer | 48 | `0x400405000C09` | 1 |
+| Button / function | OBC | IR data |
+|---|---:|---|
+| MUSIC PORT | 154 | `0x40040500595C` |
+| Volume Up | 32 | `0x400405000401` |
+| Volume Down | 33 | `0x400405008481` |
+| Live Virtualizer | 48 | `0x400405000C09` |
 
 ### Subdevice 4 — AMP/0309
 
-| 按鍵／功能 | OBC | IR Data | Repeat |
-|---|---:|---|---:|
-| TUNER/BAND | 164 | `0x400405202500` | 0 |
+| Button / function | OBC | IR data |
+|---|---:|---|
+| TUNER/BAND | 164 | `0x400405202500` |
 
 ### Subdevice 10 — CD/0303
 
-| 按鍵／功能 | OBC | IR Data | Repeat |
-|---|---:|---|---:|
-| OPEN/CLOSE | 1 | `0x4004055080D5` | 0 |
-| CD | 10 | `0x400405505005` | 1 |
+| Button / function | OBC | IR data |
+|---|---:|---|
+| OPEN/CLOSE | 1 | `0x4004055080D5` |
+| CD | 10 | `0x400405505005` |
 
-### Subdevice 16 — Panasonic SC Series 線索
+### Subdevice 16 — Panasonic SC-series research lead
 
-| 按鍵／功能 | OBC | IR Data | Repeat |
-|---|---:|---|---:|
-| SOUND EQ | 131 | `0x40040508C1CC` | 0 |
+| Button / function | OBC | IR data |
+|---|---:|---|
+| SOUND EQ | 131 | `0x40040508C1CC` |
 
 ### Subdevice 28 — AMP/0518
 
-| 按鍵／功能 | OBC | IR Data | Repeat |
-|---|---:|---|---:|
-| 1 | 16 | `0x400405380835` | 0 |
-| 2 | 17 | `0x4004053888B5` | 0 |
-| 3 | 18 | `0x400405384875` | 0 |
-| 4 | 19 | `0x40040538C8F5` | 0 |
-| 5 | 20 | `0x400405382815` | 0 |
-| 6 | 21 | `0x40040538A895` | 0 |
-| 7 | 22 | `0x400405386855` | 0 |
-| 8 | 23 | `0x40040538E8D5` | 0 |
-| 9 | 24 | `0x400405381825` | 0 |
-| 0 | 25 | `0x4004053898A5` | 0 |
-| POWER | 61 | `0x40040538BC81` | 1 |
-| Skip/Search - | 73 | `0x4004053892AF` | 0 |
-| Skip/Search + | 74 | `0x40040538526F` | 0 |
-| DISPLAY | 85 | `0x40040538AA97` | 0 |
-| ≥10 | 132 | `0x40040538211C` | 0 |
-| PGM/CLEAR | 138 | `0x40040538516C` | 0 |
-| CLOCK/TIMER ADJ | 149 | `0x40040538A994` | 1 |
-| SLEEP | 150 | `0x400405386954` | 1 |
-| TIMER SET/CHECK | 155 | `0x40040538D9E4` | 1 |
-| ALBUM/CHANNEL SELECT - | 252 | `0x400405383F02` | 0 |
-| ALBUM/CHANNEL SELECT + | 253 | `0x40040538BF82` | 0 |
+| Button / function | OBC | IR data |
+|---|---:|---|
+| 1 | 16 | `0x400405380835` |
+| 2 | 17 | `0x4004053888B5` |
+| 3 | 18 | `0x400405384875` |
+| 4 | 19 | `0x40040538C8F5` |
+| 5 | 20 | `0x400405382815` |
+| 6 | 21 | `0x40040538A895` |
+| 7 | 22 | `0x400405386855` |
+| 8 | 23 | `0x40040538E8D5` |
+| 9 | 24 | `0x400405381825` |
+| 0 | 25 | `0x4004053898A5` |
+| POWER | 61 | `0x40040538BC81` |
+| Skip/Search Down | 73 | `0x4004053892AF` |
+| Skip/Search Up | 74 | `0x40040538526F` |
+| DISPLAY | 85 | `0x40040538AA97` |
+| >=10 | 132 | `0x40040538211C` |
+| PGM/CLEAR | 138 | `0x40040538516C` |
+| CLOCK/TIMER ADJ | 149 | `0x40040538A994` |
+| SLEEP | 150 | `0x400405386954` |
+| TIMER SET/CHECK | 155 | `0x40040538D9E4` |
+| ALBUM/CHANNEL SELECT DOWN | 252 | `0x400405383F02` |
+| ALBUM/CHANNEL SELECT UP | 253 | `0x40040538BF82` |
 
-## Subdevice 掃描紀錄
+A machine-readable copy of the command table is available in [`ir-codes.csv`](ir-codes.csv).
 
-| Device | Subdevice | 結果 | 備註 |
-|---:|---:|---|---|
-| 160 | 0 | 找到功能 | AMP/0308：MUSIC PORT、音量、Live Virtualizer |
-| 160 | 4 | 找到功能 | AMP/0309：TUNER/BAND |
-| 160 | 8 | 無反應 | 已完成掃描 |
-| 160 | 10 | 找到功能 | CD/0303：OPEN/CLOSE、CD |
-| 160 | 16 | 找到功能 | 找到 SOUND EQ（OBC 131） |
-| 160 | 18 | 無反應 | 已完成掃描 |
-| 160 | 20 | 無反應 | 已完成掃描 |
-| 160 | 28 | 找到功能 | AMP/0518：數字鍵、POWER、DISPLAY、SLEEP、TIMER 等 |
-| 160 | 194 | 無反應 | AMP/0367，已完成掃描 |
+## Subdevice research log — community contributions welcome
 
-## 尚未復現／尚待補充
+The following table records which Device 160 subdevices have been explored in this particular setup. It is a research log, **not** a compatibility list and **not** a claim that a subdevice is unused or unsupported.
 
-- **CD STOP**：尚未找到／驗證。測試時沒有可用 CD 進行實際播放狀態測試。
-- **PLAY MODE**：尚未找到／驗證。測試時沒有可用 CD 進行實際播放狀態測試。
-- 其他按鍵若原廠遙控器另有列出，仍可日後按功能模式繼續補測。
+For some entries, no matching stereo action was identified during this project's test runs. That result may depend on the test conditions, input mode, equipment state, or interpretation. Other researchers are encouraged to investigate these and share their observations—even a different result is useful.
 
-## 測試方法與注意事項
+| Device | Subdevice | Research note |
+|---:|---:|---|
+| 160 | 0 | Commands identified; associated with AMP/0308. |
+| 160 | 4 | TUNER/BAND identified; associated with AMP/0309. |
+| 160 | 8 | Explored in this project; no mapping confirmed here. Further investigation welcome. |
+| 160 | 10 | OPEN/CLOSE and CD commands identified; associated with CD/0303. |
+| 160 | 16 | SOUND EQ identified; found while following a Panasonic SC-series research lead. |
+| 160 | 18 | Explored in this project; no mapping confirmed here. Further investigation welcome. |
+| 160 | 20 | Explored in this project; no mapping confirmed here. Further investigation welcome. |
+| 160 | 28 | Numeric, power, display, skip/search, album/channel, and timer-related commands identified; associated with AMP/0518. |
+| 160 | 194 | Explored while following an AMP/0367 lead; no mapping confirmed here. Further investigation welcome. |
 
-1. 先確認發射腳位使用 GPIO0（IR_E），接收腳位使用 GPIO4（IR_R）。
-2. 使用 `IRremoteESP8266` 的 Panasonic 48-bit 發送方式。
-3. 將發射器對準音響紅外線接收窗。
-4. 測試時記錄音響實際反應、Device、Subdevice、OBC、IR Data 與 Repeat。
-5. 序列監控視窗中的 `[RECEIVED]` 是 ESP8266 接收端收到自己發出的紅外線訊號（loopback）的證據；它本身不等於音響已接受指令。功能名稱與狀態應以音響本身的實際反應為準。
-6. 音響可能依目前輸入來源（FM、CD、MUSIC PORT）而對同一指令有不同反應。遇到依模式而異的功能，請分別記錄測試模式。
-7. POWER 是切換式功能時，重複發送可能造成連續切換。正式使用前應確認 Repeat 次數；可優先測試 Repeat 0。
+If you test one of these combinations, please share:
 
-## 來源與致謝
+- Stereo model and, if known, regional variant.
+- Current input mode (FM, CD, MUSIC PORT, etc.).
+- Device, subdevice, OBC, and full IR data.
+- What the stereo actually did (including no visible change, display text, or state-dependent behavior).
+- Any relevant test conditions or sequence of commands.
 
-- 按鍵資料由使用者透過 Difi WF8266RDF ESP8266 開發板、`IRremoteESP8266` 與 Panasonic SC-EN27 音響實際測試整理。
-- JP1 / One For All 設定碼資料用於縮小搜尋範圍；最終按鍵對應以本專案的實機測試紀錄為準。
-- 本專案的硬體測試、協定分析、按鍵窮舉與資料整理由使用者與 ChatGPT 協作完成。
+## Not yet reproduced
+
+- **CD STOP** — not yet identified or verified. A usable CD was not available for the playback tests.
+- **PLAY MODE** — not yet identified or verified. A usable CD was not available for the playback tests.
+
+These are open items, not claims that the functions cannot be reproduced.
+
+## Testing notes
+
+1. Confirm the board pin mapping: sender GPIO0 (`IR_E`), receiver GPIO4 (`IR_R`).
+2. Use the Panasonic 48-bit format with `IRremoteESP8266`.
+3. Aim the IR transmitter at the stereo's IR receiver window.
+4. Record the stereo's actual response separately from the ESP8266 receiver output.
+5. A `[RECEIVED]` message from the ESP8266 receiver can confirm that the locally transmitted signal was captured (loopback); by itself, it does **not** prove that the stereo accepted or acted on the command.
+6. The same command may have different effects depending on whether the stereo is in FM, CD, or MUSIC PORT mode. Include the input mode when reporting results.
+
+## Research references and acknowledgements
+
+- Button mappings in this repository were collected through hands-on tests with a Difi WF8266RDF ESP8266 board and a Panasonic SC-EN27 stereo.
+- JP1 / One For All setup-code information was used as a research lead to narrow the search. The mappings listed here are based on the project's own tests, not on an assumption that a universal-remote setup code guarantees compatibility.
+- Reverse engineering, testing, and documentation were carried out collaboratively by the project maintainer and ChatGPT.
+
+## Corrections and contributions
+
+Errors are possible, and this repository is intended to be improved through shared testing. If you find an incorrect label, a missing command, a different subdevice, or a behavior that only appears in a particular mode, please open an issue or submit a pull request. Please include enough details for someone else to reproduce the observation.
 
 ---
 
-**目前資料版本：** 依據 2026-11-05 前後的實機測試紀錄整理。後續發現新指令時，請同步更新 README 與 `ir-codes.csv`。
+Research notes compiled from tests conducted around 2026-11-05. The table may evolve as more devices and operating modes are tested.
