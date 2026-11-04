@@ -48,6 +48,7 @@ The [`examples/`](examples/) directory contains the sketches used to validate th
 | [`02_panasonic_48bit_loopback_test.ino`](examples/02_panasonic_48bit_loopback_test.ino) | Checks Panasonic 48-bit encoding and local reception. |
 | [`03_panasonic_obc_scanner.ino`](examples/03_panasonic_obc_scanner.ino) | Main research tool: scans OBC values, supports manual sends and scan control, and decodes captured Panasonic frames. |
 | [`examples/README.md`](examples/README.md) | Build notes, recommended test order, and interpretation notes. |
+| [`examples/README.zh-TW.md`](examples/README.zh-TW.md) | Traditional Chinese guide to the example sketches. |
 
 ### How the investigation works
 
@@ -164,9 +165,50 @@ These are open items, not claims that the functions cannot be reproduced.
 
 ## Research references and acknowledgements
 
-- Button mappings in this repository were collected through hands-on tests with a Difi WF8266RDF ESP8266 board and a Panasonic SC-EN27 stereo.
-- JP1 / One For All setup-code information was used as a research lead to narrow the search. The mappings listed here are based on the project's own tests, not on an assumption that a universal-remote setup code guarantees compatibility.
-- Reverse engineering, testing, and documentation were carried out collaboratively by the project maintainer and ChatGPT.
+The links below document the background sources used during this investigation. They are **research references and leads**, not proof that a listed universal-remote code or another model's command will work on the SC-EN27. The IR mappings in `ir-codes.csv` come from this project's own tests with the SC-EN27 / SA-EN27.
+
+### 1. Panasonic SC-EN27 documentation
+
+- [Panasonic SC-EN27 Operating Instructions — RQT8578-1B (ManualsDump mirror)](https://manualsdump.com/en/manuals/panasonic-sc-en27/2804/1) — model identification and troubleshooting; the manual identifies the SC-EN27 system with the SA-EN27 main unit.
+- [Page 2 — Supplied accessories and original remote](https://manualsdump.com/en/manuals/panasonic-sc-en27/2804/2) — lists the SC-EN27 remote control part number `N2QAGB000038`.
+- [Page 3 — CD operations](https://manualsdump.com/en/manuals/panasonic-sc-en27/2804/3) — reference for CD, OPEN/CLOSE, and playback controls.
+- [Page 5 — Timers and other functions](https://manualsdump.com/en/manuals/panasonic-sc-en27/2804/5) — reference for CLOCK/TIMER, SLEEP, SOUND EQ, Live Virtualizer, and DISPLAY.
+- [Page 6 — Control guide](https://manualsdump.com/en/manuals/panasonic-sc-en27/2804/6) — original remote button layout and control names.
+- [Alternative manual mirror (ManualsLib)](https://www.manualslib.com/manual/119612/Panasonic-Sc-En27.html).
+
+These are third-party copies of the operating instructions, not Panasonic-hosted downloads. The manual is referenced for model identity and intended button functions; this repository does not redistribute the manual.
+
+### 2. JP1 / One For All research
+
+- [One For All / JP1 AMP setup codes by brand](https://www.hifi-remote.com/ofa/codes-amp.shtml) — lists Panasonic amplifier setup-code candidates including `0039`, `0308`, `0309`, and `0518`. Setup codes identify a code set in a particular universal remote; they are **not** raw IR data.
+- [JP1 AMP device codes by setup code](https://www.hifi-remote.com/devices-amp.shtml) — identifies AMP codes such as `0308`, `0309`, and `0518` as Panasonic / Technics entries in the listed remote databases.
+- [JP1 CD device codes by setup code](https://www.hifi-remote.com/devices-cd.shtml) — lists CD setup code `0303` for Panasonic / Technics.
+- [JP1 discussion: Panasonic Audio setup codes and Device 160 subdevices](https://www.hifi-remote.com/forums/viewtopic.php?p=15038) — documents historical mappings such as Audio/0303 → 160.10, Audio/0308 → 160.0, Audio/0309 → 160.4, Audio/0367 → 160.194, and Audio/0518 → 160.28. These mappings were used to guide the search, then tested independently on the SC-EN27.
+- [JP1 discussion: Panasonic discrete power codes](https://www.hifi-remote.com/forums/viewtopic.php?t=2341) — discusses Panasonic Device 160 and several possible subdevice values. Its discrete ON/OFF examples concern other equipment and should not be assumed to work on the SC-EN27.
+- [JP1 discussion: Comcast remote and Panasonic SC-BT200](https://www.hifi-remote.com/forums/viewtopic.php?t=13162) — a separate Panasonic SC-series system. Its Combo2 / SC-series EQ investigation inspired an additional research path; its EFC values are **not** the SC-EN27 codes published here.
+- [JP1 Panasonic protocol reference](https://www.hifi-remote.com/wiki/index.php/Panasonic) — background on the Panasonic / Kaseikyo protocol family and its data fields.
+
+The AMP/0039 code also appears in the setup-code lists, but it is shared by multiple brands and this project did not establish a reliable SC-EN27 Device/Subdevice mapping from it. It is therefore not presented as a working code set here.
+
+### 3. IR protocol and software library
+
+- [IRremoteESP8266 source repository](https://github.com/crankyoldgit/IRremoteESP8266) — the Arduino library used for IR transmission and reception on ESP8266.
+- [IRremoteESP8266 `IRsend` API documentation](https://crankyoldgit.github.io/IRremoteESP8266/doxygen/html/classIRsend.html) — documents `encodePanasonic()` and `sendPanasonic64()`, which are used by the test sketches and scanner.
+
+### 4. Difi WF8266RDF hardware reference
+
+- [Yungger: So Easy MicroPython — ESP8266 Difi WF8266RDF IoT Learning Board](https://yungger.medium.com/so-easy-micropython-esp8266-difi-wf8266rdf-iot-learning-board-and-its-demos-937e1f3affd) — the IR examples use receiver pin `4` and sender pin `0`. This helped identify the board's IR receiver and sender connections; the mapping was then checked on the hardware used in this project.
+
+### How to interpret these references
+
+- The Panasonic manual documents the stereo's intended buttons and behavior; it does not contain the IR hex/OBC table published here.
+- JP1 / One For All material helped identify candidate protocol families, setup codes, Device/Subdevice combinations, and possible functions. Some forum examples refer to different Panasonic models.
+- The exact Device/Subdevice/OBC/IR-data mappings in this repository are **project observations**. They should be treated as experimental until independently reproduced by another tester.
+- `[RECEIVED]` from the ESP8266 receiver is a local loopback/capture observation, not by itself proof that the stereo acted on the command.
+
+### Acknowledgements
+
+Thanks to the authors and maintainers of the Panasonic documentation mirrors, JP1 / RemoteMaster community, the IRremoteESP8266 project, and the Difi WF8266RDF article author. Reverse engineering, testing, and documentation were carried out collaboratively by the project maintainer and ChatGPT.
 
 ## Corrections and contributions
 

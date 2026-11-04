@@ -48,6 +48,7 @@ English version: [README.md](README.md)
 | [`02_panasonic_48bit_loopback_test.ino`](examples/02_panasonic_48bit_loopback_test.ino) | 驗證 Panasonic 48-bit 編碼、發送及本機接收。 |
 | [`03_panasonic_obc_scanner.ino`](examples/03_panasonic_obc_scanner.ino) | 主要研究工具：掃描 OBC、手動發送指令、控制掃描進度並解碼接收訊號。 |
 | [`examples/README.md`](examples/README.md) | 編譯環境、建議測試順序及結果判讀說明（英文）。 |
+| [`examples/README.zh-TW.md`](examples/README.zh-TW.md) | 範例程式說明（繁體中文）。 |
 
 ### 逆向研究流程
 
@@ -162,11 +163,52 @@ English version: [README.md](README.md)
 5. ESP8266 顯示 `[RECEIVED]`，可以證明本機接收端捕捉到發出的訊號（loopback）；但單靠這個訊息，**不能證明音響已接受或執行指令**。
 6. 同一指令在 FM、CD、MUSIC PORT 等不同輸入模式下，可能有不同效果。回報測試結果時請註明輸入模式。
 
-## 研究參考與致謝
+## 研究參考資料與致謝
 
-- 本專案的按鍵對應由使用者使用 Difi WF8266RDF ESP8266 開發板及 Panasonic SC-EN27 音響實際測試整理。
-- JP1 / One For All 設定碼資料用於縮小搜尋範圍；本專案列出的按鍵對應以實際測試為依據，不代表萬用遙控器設定碼必然相容。
-- 逆向研究、測試與文件整理由專案維護者與 ChatGPT 協作完成。
+以下連結記錄本次逆向研究使用過的背景資料與線索。它們是**研究參考，不代表某個萬用遙控器設定碼或其他 Panasonic 型號的指令必然適用於 SC-EN27**。`ir-codes.csv` 中的紅外線對應資料，來自本專案對 SC-EN27／SA-EN27 的實機測試。
+
+### 1. Panasonic SC-EN27 原廠操作說明書
+
+- [Panasonic SC-EN27 Operating Instructions — RQT8578-1B（ManualsDump 鏡像）](https://manualsdump.com/en/manuals/panasonic-sc-en27/2804/1)：確認型號與操作說明；文件列出 SC-EN27 系統及 SA-EN27 主機。
+- [第 2 頁：配件與原廠遙控器](https://manualsdump.com/en/manuals/panasonic-sc-en27/2804/2)：列出 SC-EN27 使用的遙控器零件編號 `N2QAGB000038`。
+- [第 3 頁：CD 操作](https://manualsdump.com/en/manuals/panasonic-sc-en27/2804/3)：核對 CD、OPEN/CLOSE 及播放相關功能。
+- [第 5 頁：定時器與其他功能](https://manualsdump.com/en/manuals/panasonic-sc-en27/2804/5)：核對 CLOCK/TIMER、SLEEP、SOUND EQ、Live Virtualizer 及 DISPLAY。
+- [第 6 頁：控制按鍵指南](https://manualsdump.com/en/manuals/panasonic-sc-en27/2804/6)：原廠遙控器按鍵配置與功能名稱。
+- [另一份說明書鏡像（ManualsLib）](https://www.manualslib.com/manual/119612/Panasonic-Sc-En27.html)。
+
+以上是第三方網站提供的操作說明書副本，並非 Panasonic 官方網站上的下載連結。本專案只引用其型號與功能資訊，不重新散布說明書內容。
+
+### 2. JP1 / One For All 研究資料
+
+- [One For All / JP1 依品牌列出的 AMP 設定碼](https://www.hifi-remote.com/ofa/codes-amp.shtml)：列出 Panasonic 音響的設定碼候選，包括 `0039`、`0308`、`0309`、`0518`。設定碼是特定萬用遙控器內的預設碼組，**不是可以直接發送的紅外線資料**。
+- [JP1 AMP 設定碼索引](https://www.hifi-remote.com/devices-amp.shtml)：在其遙控器資料庫中，將 `0308`、`0309`、`0518` 等 AMP 設定碼列為 Panasonic／Technics。
+- [JP1 CD 設定碼索引](https://www.hifi-remote.com/devices-cd.shtml)：列出 Panasonic／Technics 的 CD 設定碼 `0303`。
+- [JP1 討論：Panasonic Audio 設定碼與 Device 160 Subdevice](https://www.hifi-remote.com/forums/viewtopic.php?p=15038)：記錄 Audio/0303 → 160.10、Audio/0308 → 160.0、Audio/0309 → 160.4、Audio/0367 → 160.194、Audio/0518 → 160.28 等歷史對應。這些資料用來縮小搜尋範圍，之後仍由本專案在 SC-EN27 上獨立測試。
+- [JP1 討論：Panasonic 離散電源指令](https://www.hifi-remote.com/forums/viewtopic.php?t=2341)：討論 Panasonic Device 160 及多種可能的 Subdevice。文中的離散開／關範例來自其他設備，不能直接假設適用 SC-EN27。
+- [JP1 討論：Comcast 遙控器與 Panasonic SC-BT200](https://www.hifi-remote.com/forums/viewtopic.php?t=13162)：這是另一台 Panasonic SC 系列音響。該討論對 Combo2／SC Series EQ 的研究，啟發我們追查其他 Subdevice；其中的 EFC 數值**不是本專案公布的 SC-EN27 指令碼**。
+- [JP1 Panasonic 協定參考](https://www.hifi-remote.com/wiki/index.php/Panasonic)：Panasonic／Kaseikyo 協定家族及資料欄位的背景說明。
+
+`AMP/0039` 也出現在設定碼清單中，但它同時被多個品牌共用；本專案尚未找到能可靠對應 SC-EN27 的 Device/Subdevice，因此沒有把它列為已可用的指令組合。
+
+### 3. 紅外線協定與程式庫
+
+- [IRremoteESP8266 原始碼與專案](https://github.com/crankyoldgit/IRremoteESP8266)：本專案在 ESP8266 上發送及接收紅外線訊號所使用的 Arduino 函式庫。
+- [IRremoteESP8266 `IRsend` API 文件](https://crankyoldgit.github.io/IRremoteESP8266/doxygen/html/classIRsend.html)：說明測試程式及掃描器使用的 `encodePanasonic()` 與 `sendPanasonic64()`。
+
+### 4. Difi WF8266RDF 開發板參考
+
+- [Yungger：So Easy MicroPython — ESP8266 Difi WF8266RDF IoT Learning Board](https://yungger.medium.com/so-easy-micropython-esp8266-difi-wf8266rdf-iot-learning-board-and-its-demos-937e1f3affd)：文章中的紅外線範例使用接收腳位 `4`、發射腳位 `0`，協助辨認本專案開發板的 IR 接收與發射連接；之後也在本專案實際使用的開發板上完成驗證。
+
+### 如何理解這些參考資料
+
+- Panasonic 說明書用來核對音響原本提供的按鍵與功能；它沒有提供本 Repo 所列的 IR Hex／OBC 指令表。
+- JP1／One For All 資料協助辨認候選協定、設定碼、Device/Subdevice 組合及可能的功能。有些論壇案例使用的是其他 Panasonic 型號。
+- 本 Repo 公布的 Device／Subdevice／OBC／IR Data 對應是**本專案的實測觀察**；在其他使用者獨立重現之前，仍應視為實驗性資料。
+- ESP8266 接收端出現 `[RECEIVED]` 代表本機接收到迴路訊號，不足以單獨證明音響已接受或執行指令。
+
+### 致謝
+
+感謝 Panasonic 說明書鏡像的整理者、JP1／RemoteMaster 社群、IRremoteESP8266 專案維護者，以及 Difi WF8266RDF 文章作者。本專案的逆向研究、測試與文件整理由專案維護者與 ChatGPT 協作完成。
 
 ## 錯誤修正與社群貢獻
 
